@@ -16,7 +16,7 @@ const XMAX: f64 = 1.0;
 const YMIN: f64 = -1.0;
 const YMAX: f64 = 1.0;
 
-fn render_mandelbrot() -> Vec<u8> {
+fn render_mandelbrot(palette: Vec<(u8, u8, u8)>) -> Vec<u8> {
     let mut img_buffer: Vec<u8> = vec![0; WIDTH * HEIGHT * 3];
 
     // main loop through all the pixels
@@ -40,9 +40,9 @@ fn render_mandelbrot() -> Vec<u8> {
                 img_buffer[pixel_g] = 0;
                 img_buffer[pixel_b] = 0;
             } else {
-                img_buffer[pixel_r] = 255;
-                img_buffer[pixel_g] = 255;
-                img_buffer[pixel_b] = 255;
+                img_buffer[pixel_r] = palette[iterations as usize % palette.len()].0;
+                img_buffer[pixel_g] = palette[iterations as usize % palette.len()].1;
+                img_buffer[pixel_b] = palette[iterations as usize % palette.len()].2;
             }
         }
     }
@@ -58,6 +58,13 @@ fn write_file(data: Vec<u8>, filename: &str) -> std::io::Result<()> {
     Ok(())
 }
 fn main() -> Result<(), std::io::Error> {
-    let fractal = render_mandelbrot();
+    let palette = vec![
+        (38, 70, 83),
+        (42, 157, 143),
+        (233, 196, 106),
+        (244, 162, 97),
+        (231, 111, 81),
+    ];
+    let fractal = render_mandelbrot(palette);
     write_file(fractal, "out/fractal.ppm")
 }
