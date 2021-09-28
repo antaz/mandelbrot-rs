@@ -1,4 +1,5 @@
 use oxidfract::lsm;
+use rayon::prelude::*;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -49,6 +50,37 @@ fn render_mandelbrot(palette: Vec<(u8, u8, u8)>) -> Vec<u8> {
     img_buffer
 }
 
+fn render_parallel_mandelbrot(palette: Vec<(u8, u8, u8)>) -> Vec<u8> {
+    let mut img_buffer: Vec<u8> = vec![0; WIDTH * HEIGHT * 3];
+
+    img_buffer
+        .par_chunks_exact_mut(WIDTH * 3)
+        .enumerate()
+        .for_each(|(y, rows)| {
+            rows.chunks_exact_mut(3)
+                .enumerate()
+                .for_each(|(x, triplet)| {
+                    let (cr, ci) = (
+                        (x as f64 / WIDTH as f64) * (XMAX - XMIN) + XMIN,
+                        (y as f64 / HEIGHT as f64) * (YMAX - YMIN) + YMIN,
+                    );
+                    let iterations = lsm(cr, ci);
+
+                    if iterations == MAX_ITER {
+                        triplet[0] = 0;
+                        triplet[1] = 0;
+                        triplet[2] = 0;
+                    } else {
+                        triplet[0] = palette[iterations as usize % palette.len()].0;
+                        triplet[1] = palette[iterations as usize % palette.len()].1;
+                        triplet[2] = palette[iterations as usize % palette.len()].2;
+                    }
+                });
+        });
+
+    img_buffer
+}
+
 fn write_file(data: Vec<u8>, filename: &str) -> std::io::Result<()> {
     let path = Path::new(filename);
     let mut file = File::create(&path)?;
@@ -65,6 +97,6 @@ fn main() -> Result<(), std::io::Error> {
         (244, 162, 97),
         (231, 111, 81),
     ];
-    let fractal = render_mandelbrot(palette);
+    let fractal = render_parallel_mandelbrot(palette);
     write_file(fractal, "out/fractal.ppm")
 }
