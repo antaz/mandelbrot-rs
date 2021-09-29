@@ -1,7 +1,8 @@
-use oxidfract::lsm;
+use oxidfract::{lsm, lsm_avx2};
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::prelude::*;
+use std::mem::transmute;
 use std::path::Path;
 
 // maximum iteration count
@@ -57,24 +58,36 @@ fn render_parallel_mandelbrot(palette: Vec<(u8, u8, u8)>) -> Vec<u8> {
         .par_chunks_exact_mut(WIDTH * 3)
         .enumerate()
         .for_each(|(y, rows)| {
-            rows.chunks_exact_mut(3)
+            rows.chunks_exact_mut(12)
                 .enumerate()
-                .for_each(|(x, triplet)| {
-                    let (cr, ci) = (
-                        (x as f64 / WIDTH as f64) * (XMAX - XMIN) + XMIN,
-                        (y as f64 / HEIGHT as f64) * (YMAX - YMIN) + YMIN,
-                    );
-                    let iterations = lsm(cr, ci);
+                .for_each(|(c, chunk)| {
+                    let c = (c as f64) * 4.0;
+                    let y = y as f64;
 
-                    if iterations == MAX_ITER {
-                        triplet[0] = 0;
-                        triplet[1] = 0;
-                        triplet[2] = 0;
-                    } else {
-                        triplet[0] = palette[iterations as usize % palette.len()].0;
-                        triplet[1] = palette[iterations as usize % palette.len()].1;
-                        triplet[2] = palette[iterations as usize % palette.len()].2;
+                    let cr = &mut [c, c + 1.0, c + 2.0, c + 3.0];
+                    let ci = &mut [y; 4];
+
+                    for (cr, ci) in cr.iter_mut().zip(ci.iter_mut()) {
+                        *cr = (*cr / WIDTH as f64) * (XMAX - XMIN) + XMIN;
+                        *ci = (*ci / HEIGHT as f64) * (YMAX - YMIN) + YMIN;
                     }
+
+                    let iterations: [f64; 4] =
+                        unsafe { transmute(lsm_avx2(transmute(*cr), transmute(*ci))) };
+                    chunk
+                        .chunks_exact_mut(3)
+                        .enumerate()
+                        .for_each(|(t, triplet)| {
+                            if iterations[t] == MAX_ITER as f64 {
+                                triplet[0] = 0;
+                                triplet[1] = 0;
+                                triplet[2] = 0;
+                            } else {
+                                triplet[0] = palette[iterations[t] as usize % palette.len()].0;
+                                triplet[1] = palette[iterations[t] as usize % palette.len()].1;
+                                triplet[2] = palette[iterations[t] as usize % palette.len()].2;
+                            }
+                        })
                 });
         });
 

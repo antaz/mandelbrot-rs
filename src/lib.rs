@@ -29,5 +29,48 @@ pub fn lsm(cr: f64, ci: f64) -> i32 {
     iteration
 }
 
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
+#[target_feature(enable = "avx2")]
+pub unsafe fn lsm_avx2(cr: __m256d, ci: __m256d) -> __m256d {
+    // z (real and imaginary parts init)
+    let mut zr = _mm256_set1_pd(0.0);
+    let mut zi = _mm256_set1_pd(0.0);
+
+    // z^2 (real and imaginary parts init)
+    let mut zr2 = _mm256_set1_pd(0.0);
+    let mut zi2 = _mm256_set1_pd(0.0);
+
+    // useful constants
+    let one = _mm256_set1_pd(1.0);
+    let two = _mm256_set1_pd(2.0);
+    let four = _mm256_set1_pd(4.0);
+
+    // iteration counts
+    let mut iterations = _mm256_set1_pd(0.0);
+
+    for _ in 0..MAX_ITER {
+        // comparison mask of the magnitudes with the escape radius
+        let mask = _mm256_cmp_pd::<_CMP_LT_OQ>(_mm256_add_pd(zr2, zi2), four);
+
+        // update the iteration counts
+        iterations = _mm256_add_pd(_mm256_and_pd(mask, one), iterations);
+
+        // break if all values exceeded the threshold
+        if _mm256_movemask_pd(mask) == 0 {
+            break;
+        }
+
+        // update z
+        zi = _mm256_add_pd(_mm256_mul_pd(two, _mm256_mul_pd(zr, zi)), ci);
+        zr = _mm256_add_pd(_mm256_sub_pd(zr2, zi2), cr);
+
+        // update z^2
+        zr2 = _mm256_mul_pd(zr, zr);
+        zi2 = _mm256_mul_pd(zi, zi);
+    }
+    iterations
+}
+
 #[cfg(test)]
 mod tests {}
