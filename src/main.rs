@@ -42,9 +42,12 @@ fn render_mandelbrot(palette: Vec<(u8, u8, u8)>) -> Vec<u8> {
                 img_buffer[pixel_g] = 0;
                 img_buffer[pixel_b] = 0;
             } else {
-                img_buffer[pixel_r] = palette[iterations as usize % palette.len()].0;
-                img_buffer[pixel_g] = palette[iterations as usize % palette.len()].1;
-                img_buffer[pixel_b] = palette[iterations as usize % palette.len()].2;
+                img_buffer[pixel_r] =
+                    palette[iterations as usize % palette.len()].0;
+                img_buffer[pixel_g] =
+                    palette[iterations as usize % palette.len()].1;
+                img_buffer[pixel_b] =
+                    palette[iterations as usize % palette.len()].2;
             }
         }
     }
@@ -72,22 +75,28 @@ fn render_parallel_mandelbrot(palette: Vec<(u8, u8, u8)>) -> Vec<u8> {
                         *ci = (*ci / HEIGHT as f64) * (YMAX - YMIN) + YMIN;
                     }
 
-                    let iterations: [f64; 4] =
-                        unsafe { transmute(lsm_avx2(transmute(*cr), transmute(*ci))) };
-                    chunk
-                        .chunks_exact_mut(3)
-                        .enumerate()
-                        .for_each(|(t, triplet)| {
+                    let iterations: [f64; 4] = unsafe {
+                        transmute(lsm_avx2(transmute(*cr), transmute(*ci)))
+                    };
+                    chunk.chunks_exact_mut(3).enumerate().for_each(
+                        |(t, triplet)| {
                             if iterations[t] == MAX_ITER as f64 {
                                 triplet[0] = 0;
                                 triplet[1] = 0;
                                 triplet[2] = 0;
                             } else {
-                                triplet[0] = palette[iterations[t] as usize % palette.len()].0;
-                                triplet[1] = palette[iterations[t] as usize % palette.len()].1;
-                                triplet[2] = palette[iterations[t] as usize % palette.len()].2;
+                                triplet[0] = palette
+                                    [iterations[t] as usize % palette.len()]
+                                .0;
+                                triplet[1] = palette
+                                    [iterations[t] as usize % palette.len()]
+                                .1;
+                                triplet[2] = palette
+                                    [iterations[t] as usize % palette.len()]
+                                .2;
                             }
-                        })
+                        },
+                    )
                 });
         });
 
