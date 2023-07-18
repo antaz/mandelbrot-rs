@@ -1,12 +1,18 @@
-# oxidfract
+# Mandelbrot Fractal Renderer
 
-Generating fractals through Rust's high performance computation techniques.
+This is a [Mandelbrot](https://en.wikipedia.org/wiki/Mandelbrot_set) fractal renderer written in Rust.
 
-This is an ongoing project related to an article hosted here:
+![]()
 
-[Fractal Generation: A Rustacean’s Prespective](https://blocr.github.io/posts/fractal_generation.html)
+## Features
+- Multithreading with [Rayon](https://docs.rs/rayon/latest/rayon/)
+- SIMD with both AVX2
 
-## infinite zooms
-using the same code by feeding the generated frames to ffmpeg
+## Benchmarks
+benchmark results on an i3-5005U CPU @ 2.00GHz
 
-[https://www.youtube.com/watch?v=ipxkvIolRps](https://www.youtube.com/watch?v=ipxkvIolRps)
+| Version         | CPU utilized | Instructions (B) | Time elapsed (s) | 
+| --------------- | ------------ | ---------------- | ---------------- |
+| non-parallel    | 0.999        | 3.505            | 1.204244         |
+| parallel        | 3.839        | 3.485            | 0.36724          |
+| parallel-avx2   | 3.792        | 0.864            | 0.121628         | 
