@@ -2,8 +2,6 @@
 
 This is a [Mandelbrot](https://en.wikipedia.org/wiki/Mandelbrot_set) fractal renderer written in Rust.
 
-![]()
-
 ## Features
 - Multithreading with [Rayon](https://docs.rs/rayon/latest/rayon/)
 - SIMD with both AVX2
