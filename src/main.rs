@@ -32,6 +32,6 @@ fn main() -> () {
         (231, 111, 81),
     ];
 
-    let data = render_mandelbrot(&palette);
+    let data = render_mandelbrot(&palette, width, height);
     write_file(data, &path, width, height).unwrap();
 }

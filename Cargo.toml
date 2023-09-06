@@ -8,6 +8,14 @@ edition = "2018"
 [[bin]]
 name = "mandelbrot-rs"
 path = "src/main.rs"
+bench = false
 
 [dependencies]
 rayon = "1.5"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "mandelbrot"
+harness = false
