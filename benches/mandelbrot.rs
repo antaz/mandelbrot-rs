@@ -4,7 +4,7 @@ use mandelbrot_rs::render_mandelbrot;
 pub fn render_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("bench");
     group.sample_size(10);
-    let mut buffer = vec![1280 * 720];
+    let mut buffer = vec![0u32; 1280 * 720];
 
     group.bench_function("render_mandelbrot 1280 720", |b| {
         b.iter(|| {
