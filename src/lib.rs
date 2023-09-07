@@ -22,40 +22,22 @@ pub fn lsm(cr: f64, ci: f64) -> i32 {
     }
     iteration
 }
-pub fn render_mandelbrot(
-    palette: &Vec<(u8, u8, u8)>,
-    width: usize,
-    height: usize,
-) -> Vec<u8> {
-    let mut img_buffer: Vec<u8> = vec![0; width * height * 3];
-
-    for y in 0..height as u32 {
-        for x in 0..width as u32 {
+pub fn render_mandelbrot(buffer: &mut [u32], width: usize, height: usize) {
+    buffer.chunks_mut(width).enumerate().for_each(|(y, rows)| {
+        rows.iter_mut().enumerate().for_each(|(x, pixel)| {
             let (cr, ci) = (
                 (x as f64 / width as f64) * (XMAX - XMIN) + XMIN,
                 (y as f64 / height as f64) * (YMAX - YMIN) + YMIN,
             );
             let iterations = lsm(cr, ci);
 
-            let pixel_r = (y as usize * width + x as usize) * 3;
-            let pixel_g = (y as usize * width + x as usize) * 3 + 1;
-            let pixel_b = (y as usize * width + x as usize) * 3 + 2;
-
             if iterations == MAX_ITER {
-                img_buffer[pixel_r] = 0;
-                img_buffer[pixel_g] = 0;
-                img_buffer[pixel_b] = 0;
+                *pixel = 0 | (0 << 8) | (0 << 16);
             } else {
-                img_buffer[pixel_r] =
-                    palette[iterations as usize % palette.len()].0;
-                img_buffer[pixel_g] =
-                    palette[iterations as usize % palette.len()].1;
-                img_buffer[pixel_b] =
-                    palette[iterations as usize % palette.len()].2;
+                *pixel = 255 | (255 << 8) | (255 << 16);
             }
-        }
-    }
-    img_buffer
+        })
+    });
 }
 
 #[cfg(test)]

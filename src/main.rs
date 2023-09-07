@@ -4,16 +4,21 @@ use std::io::prelude::*;
 use std::path::Path;
 
 fn write_file(
-    data: Vec<u8>,
+    data: &[u32],
     path: &str,
     width: usize,
     height: usize,
 ) -> std::io::Result<()> {
     let path = Path::new(path);
     let mut file = File::create(&path)?;
-    let header = format!("P6 {} {} 255\n", width, height);
+    let header = format!("P6 {} {} 255 ", width, height);
     file.write(header.as_bytes())?;
-    file.write(&data)?;
+    let buffer = data
+        .iter()
+        .map(|v| v.to_le_bytes()[0..3].iter().cloned().collect::<Vec<u8>>())
+        .flatten()
+        .collect::<Vec<u8>>();
+    file.write(&buffer)?;
     Ok(())
 }
 fn main() -> () {
@@ -24,14 +29,7 @@ fn main() -> () {
     let height: usize = dim.next().unwrap().parse().unwrap();
     let path = std::env::args().nth(2).expect("Expected path");
 
-    let palette = vec![
-        (38, 70, 83),
-        (42, 157, 143),
-        (233, 196, 106),
-        (244, 162, 97),
-        (231, 111, 81),
-    ];
-
-    let data = render_mandelbrot(&palette, width, height);
-    write_file(data, &path, width, height).unwrap();
+    let mut buffer = vec![0u32; width * height];
+    render_mandelbrot(&mut buffer, width, height);
+    write_file(&buffer, &path, width, height).unwrap();
 }

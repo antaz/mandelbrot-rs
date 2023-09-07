@@ -19,3 +19,6 @@ criterion = "0.5.1"
 [[bench]]
 name = "mandelbrot"
 harness = false
+
+[lib]
+bench = false
