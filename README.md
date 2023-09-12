@@ -4,10 +4,16 @@ This is a [Mandelbrot](https://en.wikipedia.org/wiki/Mandelbrot_set) fractal ren
 
 ## Features
 - Multithreading with [Rayon](https://docs.rs/rayon/latest/rayon/)
-- SIMD with both AVX2
+- SIMD using AVX2 auto-vectorization
+
+## Build
+To build with AVX2 support run the follow command
+```sh
+RUSTFLAGS='-C target-feature=+avx2' cargo build --release
+```
 
 ## Benchmarks
-benchmark results on an i3-5005U CPU @ 2.00GHz
+benchmark results on an i3-5005U CPU @ 2.00GHz for generating 1280x720 px image with 1000 iterations
 
 | Version         | CPU utilized | Instructions (B) | Time elapsed (s) | 
 | --------------- | ------------ | ---------------- | ---------------- |

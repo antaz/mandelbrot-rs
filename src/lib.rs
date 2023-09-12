@@ -1,76 +1,107 @@
-#[allow(dead_code)]
+use rayon::prelude::*;
 
-// maximum iteration count
-const MAX_ITER: i32 = 1000;
-// escaoe radius squared
-const RADIUS_SQ: f64 = 4.0;
+const MAX_ITER: u32 = 1000;
+const RADIUS_SQ: f32 = 4.0;
 
-// scalar implementation of Level Set Method
-pub fn lsm(cr: f64, ci: f64) -> i32 {
-    // z (real and imaginary parts init)
-    let mut zr = 0.0;
-    let mut zi = 0.0;
-    // z^2 (real and imaginary parts init)
-    let mut zr2 = 0.0;
-    let mut zi2 = 0.0;
-    // iteration count
-    let mut iteration = 0;
+const XMIN: f32 = -2.5;
+const XMAX: f32 = 1.0;
+const YMIN: f32 = -1.0;
+const YMAX: f32 = 1.0;
 
-    while (iteration < MAX_ITER) && (zr2 + zi2 < RADIUS_SQ) {
-        // update z
-        zi = 2.0 * zr * zi + ci;
-        zr = zr2 - zi2 + cr;
-        // update z^2
-        zr2 = zr * zr;
-        zi2 = zi * zi;
-        // and update the iteration count
-        iteration = iteration + 1;
+pub fn lsm(c: &[f32; 2]) -> u32 {
+    let mut z = [0.; 2];
+    let mut i = 0;
+
+    while (i < MAX_ITER) && (z[0] + z[1] < RADIUS_SQ) {
+        (z[0], z[1]) =
+            (z[0] * z[0] - z[1] * z[1] + c[0], 2. * z[0] * z[1] + c[1]);
+        i += 1;
     }
-    iteration
+    i
 }
 
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::*;
 #[target_feature(enable = "avx2")]
-pub unsafe fn lsm_avx2(cr: __m256d, ci: __m256d) -> __m256d {
-    // z (real and imaginary parts init)
-    let mut zr = _mm256_set1_pd(0.0);
-    let mut zi = _mm256_set1_pd(0.0);
-
-    // z^2 (real and imaginary parts init)
-    let mut zr2 = _mm256_set1_pd(0.0);
-    let mut zi2 = _mm256_set1_pd(0.0);
-
-    // useful constants
-    let one = _mm256_set1_pd(1.0);
-    let two = _mm256_set1_pd(2.0);
-    let four = _mm256_set1_pd(4.0);
-
-    // iteration counts
-    let mut iterations = _mm256_set1_pd(0.0);
+pub unsafe fn lsm_v(cr: &[f32; 8], ci: &[f32; 8]) -> [u32; 8] {
+    let mut zr = [0.; 8];
+    let mut zi = [0.; 8];
+    let mut count = [0; 8];
 
     for _ in 0..MAX_ITER {
-        // comparison mask of the magnitudes with the escape radius
-        let mask = _mm256_cmp_pd::<_CMP_LT_OQ>(_mm256_add_pd(zr2, zi2), four);
+        let mut mask = [0u32; 8];
+        let mut sum = 0;
 
-        // update the iteration counts
-        iterations = _mm256_add_pd(_mm256_and_pd(mask, one), iterations);
+        for i in 0..8 {
+            mask[i] = (zr[i] + zi[i] < RADIUS_SQ) as u32;
+            count[i] += mask[i];
 
-        // break if all values exceeded the threshold
-        if _mm256_movemask_pd(mask) == 0 {
-            break;
+            (zr[i], zi[i]) = (
+                zr[i] * zr[i] - zi[i] * zi[i] + cr[i],
+                2. * zr[i] * zi[i] + ci[i],
+            );
+
+            sum += mask[i];
         }
 
-        // update z
-        zi = _mm256_add_pd(_mm256_mul_pd(two, _mm256_mul_pd(zr, zi)), ci);
-        zr = _mm256_add_pd(_mm256_sub_pd(zr2, zi2), cr);
-
-        // update z^2
-        zr2 = _mm256_mul_pd(zr, zr);
-        zi2 = _mm256_mul_pd(zi, zi);
+        if sum == 0 {
+            break;
+        }
     }
-    iterations
+
+    count
 }
 
+pub fn render_mandelbrot(buffer: &mut [u32], width: usize, height: usize) {
+    buffer
+        .par_chunks_mut(width)
+        .enumerate()
+        .for_each(|(y, rows)| {
+            #[cfg(target_feature = "avx2")]
+            rows.chunks_mut(8).enumerate().for_each(|(x, v)| {
+                let (cr, ci) = (
+                    &[
+                        ((x * 8) as f32 / width as f32) * (XMAX - XMIN) + XMIN,
+                        ((x * 8 + 1) as f32 / width as f32) * (XMAX - XMIN)
+                            + XMIN,
+                        ((x * 8 + 2) as f32 / width as f32) * (XMAX - XMIN)
+                            + XMIN,
+                        ((x * 8 + 3) as f32 / width as f32) * (XMAX - XMIN)
+                            + XMIN,
+                        ((x * 8 + 4) as f32 / width as f32) * (XMAX - XMIN)
+                            + XMIN,
+                        ((x * 8 + 5) as f32 / width as f32) * (XMAX - XMIN)
+                            + XMIN,
+                        ((x * 8 + 6) as f32 / width as f32) * (XMAX - XMIN)
+                            + XMIN,
+                        ((x * 8 + 7) as f32 / width as f32) * (XMAX - XMIN)
+                            + XMIN,
+                    ],
+                    &[(y as f32 / height as f32) * (YMAX - YMIN) + YMIN; 8],
+                );
+                let iterations = unsafe { lsm_v(cr, ci) };
+                iterations.iter().enumerate().for_each(|(i, x)| {
+                    if *x == MAX_ITER {
+                        v[i] = 0 | (0 << 8) | (0 << 16);
+                    } else {
+                        v[i] = 255 | (255 << 8) | (255 << 16);
+                    }
+                })
+            });
+
+            #[cfg(not(target_feature = "avx2"))]
+            rows.iter_mut().enumerate().for_each(|(x, pixel)| {
+                let c = &[
+                    (x as f32 / width as f32) * (XMAX - XMIN) + XMIN,
+                    (y as f32 / height as f32) * (YMAX - YMIN) + YMIN,
+                ];
+                let iterations = lsm(c);
+
+                if iterations == MAX_ITER {
+                    *pixel = 0 | (0 << 8) | (0 << 16);
+                } else {
+                    *pixel = 255 | (255 << 8) | (255 << 16);
+                }
+            })
+        });
+}
 #[cfg(test)]
 mod tests {}
