@@ -8,21 +8,16 @@ const XMAX: f32 = 1.0;
 const YMIN: f32 = -1.0;
 const YMAX: f32 = 1.0;
 
-pub fn lsm(cr: f32, ci: f32) -> i32 {
-    let mut zr = 0.0;
-    let mut zi = 0.0;
-    let mut zr2 = 0.0;
-    let mut zi2 = 0.0;
-    let mut iteration = 0;
+pub fn lsm(c: &[f32; 2]) -> i32 {
+    let mut z = [0.; 2];
+    let mut i = 0;
 
-    while (iteration < MAX_ITER) && (zr2 + zi2 < RADIUS_SQ) {
-        zi = 2.0 * zr * zi + ci;
-        zr = zr2 - zi2 + cr;
-        zr2 = zr * zr;
-        zi2 = zi * zi;
-        iteration = iteration + 1;
+    while (i < MAX_ITER) && (z[0] + z[1] < RADIUS_SQ) {
+        (z[0], z[1]) =
+            (z[0] * z[0] - z[1] * z[1] + c[0], 2. * z[0] * z[1] + c[1]);
+        i += 1;
     }
-    iteration
+    i
 }
 pub fn render_mandelbrot(buffer: &mut [u32], width: usize, height: usize) {
     buffer
@@ -30,11 +25,11 @@ pub fn render_mandelbrot(buffer: &mut [u32], width: usize, height: usize) {
         .enumerate()
         .for_each(|(y, rows)| {
             rows.iter_mut().enumerate().for_each(|(x, pixel)| {
-                let (cr, ci) = (
+                let c = &[
                     (x as f32 / width as f32) * (XMAX - XMIN) + XMIN,
                     (y as f32 / height as f32) * (YMAX - YMIN) + YMIN,
-                );
-                let iterations = lsm(cr, ci);
+                ];
+                let iterations = lsm(c);
 
                 if iterations == MAX_ITER {
                     *pixel = 0 | (0 << 8) | (0 << 16);
