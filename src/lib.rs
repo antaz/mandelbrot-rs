@@ -12,7 +12,7 @@ pub fn lsm(c: &[f32; 2]) -> u32 {
     let mut z = [0.; 2];
     let mut i = 0;
 
-    while (i < MAX_ITER) && (z[0] + z[1] < RADIUS_SQ) {
+    while (i < MAX_ITER) && (z[0] * z[0] + z[1] * z[1] < RADIUS_SQ) {
         (z[0], z[1]) =
             (z[0] * z[0] - z[1] * z[1] + c[0], 2. * z[0] * z[1] + c[1]);
         i += 1;
@@ -31,7 +31,7 @@ pub unsafe fn lsm_v(cr: &[f32; 8], ci: &[f32; 8]) -> [u32; 8] {
         let mut sum = 0;
 
         for i in 0..8 {
-            mask[i] = (zr[i] + zi[i] < RADIUS_SQ) as u32;
+            mask[i] = (zr[i] * zr[i] + zi[i] * zi[i] < RADIUS_SQ) as u32;
             count[i] += mask[i];
 
             (zr[i], zi[i]) = (
