@@ -11,6 +11,7 @@ path = "src/main.rs"
 bench = false
 
 [dependencies]
+clap = { version = "4.4.3", features = ["derive"] }
 rayon = "1.5"
 
 [dev-dependencies]
