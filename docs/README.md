@@ -2,6 +2,8 @@
 
 This is a [Mandelbrot](https://en.wikipedia.org/wiki/Mandelbrot_set) fractal renderer written in Rust.
 
+![1280x720 render using XAOS color palette](./mandelbrot.png)
+
 ## Features
 - Multithreading with [Rayon](https://docs.rs/rayon/latest/rayon/)
 - SIMD using AVX2 auto-vectorization
