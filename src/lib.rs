@@ -8,12 +8,12 @@ pub mod color;
 use crate::color::Rgb;
 use crate::color::BLACK;
 
-const XMIN: f32 = -2.5;
-const XMAX: f32 = 1.0;
-const YMIN: f32 = -1.0;
-const YMAX: f32 = 1.0;
+const XMIN: f64 = -2.5;
+const XMAX: f64 = 1.0;
+const YMIN: f64 = -1.0;
+const YMAX: f64 = 1.0;
 
-pub fn lsm(c: &[f32; 2], max_iter: u32) -> u32 {
+pub fn lsm(c: &[f64; 2], max_iter: u32) -> u32 {
     let mut z = [0.; 2];
     let mut i = 0;
 
@@ -26,16 +26,16 @@ pub fn lsm(c: &[f32; 2], max_iter: u32) -> u32 {
 }
 
 #[target_feature(enable = "avx2")]
-pub unsafe fn lsm_v(cr: &[f32; 8], ci: &[f32; 8], max_iter: u32) -> [u32; 8] {
-    let mut zr = [0.; 8];
-    let mut zi = [0.; 8];
-    let mut count = [0; 8];
+pub unsafe fn lsm_v(cr: &[f64; 4], ci: &[f64; 4], max_iter: u32) -> [u32; 4] {
+    let mut zr = [0.; 4];
+    let mut zi = [0.; 4];
+    let mut count = [0; 4];
 
     for _ in 0..max_iter {
-        let mut mask = [0u32; 8];
+        let mut mask = [0u32; 4];
         let mut sum = 0;
 
-        for i in 0..8 {
+        for i in 0..4 {
             mask[i] = (zr[i] * zr[i] + zi[i] * zi[i] < 4.) as u32;
             count[i] += mask[i];
 
@@ -70,23 +70,15 @@ pub fn render(
             rows.chunks_mut(8).enumerate().for_each(|(x, v)| {
                 let (cr, ci) = (
                     &[
-                        ((x * 8) as f32 / width as f32) * (XMAX - XMIN) + XMIN,
-                        ((x * 8 + 1) as f32 / width as f32) * (XMAX - XMIN)
+                        ((x * 8) as f64 / width as f64) * (XMAX - XMIN) + XMIN,
+                        ((x * 8 + 1) as f64 / width as f64) * (XMAX - XMIN)
                             + XMIN,
-                        ((x * 8 + 2) as f32 / width as f32) * (XMAX - XMIN)
+                        ((x * 8 + 2) as f64 / width as f64) * (XMAX - XMIN)
                             + XMIN,
-                        ((x * 8 + 3) as f32 / width as f32) * (XMAX - XMIN)
-                            + XMIN,
-                        ((x * 8 + 4) as f32 / width as f32) * (XMAX - XMIN)
-                            + XMIN,
-                        ((x * 8 + 5) as f32 / width as f32) * (XMAX - XMIN)
-                            + XMIN,
-                        ((x * 8 + 6) as f32 / width as f32) * (XMAX - XMIN)
-                            + XMIN,
-                        ((x * 8 + 7) as f32 / width as f32) * (XMAX - XMIN)
+                        ((x * 8 + 3) as f64 / width as f64) * (XMAX - XMIN)
                             + XMIN,
                     ],
-                    &[(y as f32 / height as f32) * (YMAX - YMIN) + YMIN; 8],
+                    &[(y as f64 / height as f64) * (YMAX - YMIN) + YMIN; 4],
                 );
                 let iterations = unsafe { lsm_v(cr, ci, max_iter) };
                 iterations.iter().enumerate().for_each(|(i, x)| {
@@ -101,8 +93,8 @@ pub fn render(
             #[cfg(not(target_feature = "avx2"))]
             rows.iter_mut().enumerate().for_each(|(x, pixel)| {
                 let c = &[
-                    (x as f32 / width as f32) * (XMAX - XMIN) + XMIN,
-                    (y as f32 / height as f32) * (YMAX - YMIN) + YMIN,
+                    (x as f64 / width as f64) * (XMAX - XMIN) + XMIN,
+                    (y as f64 / height as f64) * (YMAX - YMIN) + YMIN,
                 ];
                 let iterations = lsm(c, max_iter);
 
