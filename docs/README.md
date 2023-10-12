@@ -2,6 +2,9 @@
 
 This is a [Mandelbrot](https://en.wikipedia.org/wiki/Mandelbrot_set) fractal renderer written in Rust.
 
+Read the corresponding article here:
+https://gist.github.com/antaz/72e8dcf3446d33a84d1b41aa5538cdc8
+
 ![1280x720 render using XAOS color palette](./mandelbrot.png)
 *1280x720 render using XAOS color palette*
 
