@@ -8,10 +8,15 @@ pub mod color;
 use crate::color::Rgb;
 use crate::color::BLACK;
 
-const XMIN: f64 = -2.5;
-const XMAX: f64 = 1.0;
-const YMIN: f64 = -1.0;
-const YMAX: f64 = 1.0;
+pub struct Params {
+    pub width: usize,
+    pub height: usize,
+    pub xmax: f64,
+    pub xmin: f64,
+    pub ymax: f64,
+    pub ymin: f64,
+    pub max_iter: u32,
+}
 
 pub fn lsm(c: &[f64; 2], max_iter: u32) -> u32 {
     let mut z = [0.; 2];
@@ -55,34 +60,35 @@ pub unsafe fn lsm_v(cr: &[f64; 4], ci: &[f64; 4], max_iter: u32) -> [u32; 4] {
     count
 }
 
-pub fn render(
-    buffer: &mut [u32],
-    width: usize,
-    height: usize,
-    max_iter: u32,
-    palette: &Vec<Rgb>,
-) {
+pub fn render(buffer: &mut [u32], params: Params, palette: &Vec<Rgb>) {
     buffer
-        .par_chunks_mut(width)
+        .par_chunks_mut(params.width)
         .enumerate()
         .for_each(|(y, rows)| {
             #[cfg(target_feature = "avx2")]
-            rows.chunks_mut(8).enumerate().for_each(|(x, v)| {
+            rows.chunks_mut(4).enumerate().for_each(|(x, v)| {
                 let (cr, ci) = (
                     &[
-                        ((x * 8) as f64 / width as f64) * (XMAX - XMIN) + XMIN,
-                        ((x * 8 + 1) as f64 / width as f64) * (XMAX - XMIN)
-                            + XMIN,
-                        ((x * 8 + 2) as f64 / width as f64) * (XMAX - XMIN)
-                            + XMIN,
-                        ((x * 8 + 3) as f64 / width as f64) * (XMAX - XMIN)
-                            + XMIN,
+                        ((x * 4) as f64 / params.width as f64)
+                            * (params.xmax - params.xmin)
+                            + params.xmin,
+                        ((x * 4 + 1) as f64 / params.width as f64)
+                            * (params.xmax - params.xmin)
+                            + params.xmin,
+                        ((x * 4 + 2) as f64 / params.width as f64)
+                            * (params.xmax - params.xmin)
+                            + params.xmin,
+                        ((x * 4 + 3) as f64 / params.width as f64)
+                            * (params.xmax - params.xmin)
+                            + params.xmin,
                     ],
-                    &[(y as f64 / height as f64) * (YMAX - YMIN) + YMIN; 4],
+                    &[(y as f64 / params.height as f64)
+                        * (params.ymax - params.ymin)
+                        + params.ymin; 4],
                 );
-                let iterations = unsafe { lsm_v(cr, ci, max_iter) };
+                let iterations = unsafe { lsm_v(cr, ci, params.max_iter) };
                 iterations.iter().enumerate().for_each(|(i, x)| {
-                    if *x == max_iter {
+                    if *x == params.max_iter {
                         v[i] = BLACK.into();
                     } else {
                         v[i] = palette[*x as usize % palette.len()].into();
@@ -93,12 +99,16 @@ pub fn render(
             #[cfg(not(target_feature = "avx2"))]
             rows.iter_mut().enumerate().for_each(|(x, pixel)| {
                 let c = &[
-                    (x as f64 / width as f64) * (XMAX - XMIN) + XMIN,
-                    (y as f64 / height as f64) * (YMAX - YMIN) + YMIN,
+                    (x as f64 / params.width as f64)
+                        * (params.xmax - params.xmin)
+                        + params.xmin,
+                    (y as f64 / params.height as f64)
+                        * (params.ymax - params.ymin)
+                        + params.ymin,
                 ];
-                let iterations = lsm(c, max_iter);
+                let iterations = lsm(c, params.max_iter);
 
-                if iterations == max_iter {
+                if iterations == params.max_iter {
                     *pixel = BLACK.into();
                 } else {
                     *pixel =
