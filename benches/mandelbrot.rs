@@ -1,22 +1,31 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use mandelbrot_rs::render_mandelbrot;
+#![feature(test)]
 
-pub fn render_bench(c: &mut Criterion) {
-    let mut group = c.benchmark_group("bench");
-    group.sample_size(10);
+extern crate test;
+
+use mandelbrot_rs::color::stretch;
+use mandelbrot_rs::color::XAOS;
+use mandelbrot_rs::{render, Params};
+use test::Bencher;
+
+#[bench]
+fn render_bench(b: &mut Bencher) {
     let mut buffer = vec![0u32; 1280 * 720];
+    let palette = stretch(8, &XAOS);
+    let params = Params {
+        width: 1280,
+        height: 720,
+        xmax: 1.0,
+        xmin: -2.5,
+        ymax: 1.0,
+        ymin: -1.0,
+        max_iter: 512,
+    };
 
-    group.bench_function("render_mandelbrot 1280 720", |b| {
-        b.iter(|| {
-            render_mandelbrot(
-                black_box(&mut buffer),
-                black_box(1280),
-                black_box(720),
-            )
-        })
+    b.iter(|| {
+        render(
+            test::black_box(&mut buffer),
+            test::black_box(params),
+            test::black_box(&palette),
+        );
     });
-    group.finish();
 }
-
-criterion_group!(benches, render_bench);
-criterion_main!(benches);
