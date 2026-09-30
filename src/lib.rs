@@ -4,6 +4,8 @@ use std::io::prelude::*;
 use std::path::Path;
 
 pub mod color;
+pub mod video;
+pub mod cli;
 
 use crate::color::Rgb;
 use crate::color::BLACK;
@@ -18,16 +20,23 @@ pub struct Params {
     pub max_iter: u32,
 }
 
-pub fn lsm(c: &[f64; 2], max_iter: u32) -> u32 {
+pub fn lsm(c: &[f64; 2], max_iter: u32) -> f64 {
     let mut z = [0.; 2];
-    let mut i = 0;
+    let mut i = 0.0;
 
-    while (i < max_iter) && (z[0] * z[0] + z[1] * z[1] < 4.) {
+    while (i < max_iter as f64) && (z[0] * z[0] + z[1] * z[1] < 65536.0) {
         (z[0], z[1]) =
             (z[0] * z[0] - z[1] * z[1] + c[0], 2. * z[0] * z[1] + c[1]);
-        i += 1;
+        i += 1.0;
     }
-    i
+
+    if i < max_iter as f64 {
+        let log_zn = (z[0] * z[0] + z[1] * z[1]).ln() / 2.0;
+        let nu = log_zn.ln() / 2.0_f64.ln();
+        i + 1.0 - nu
+    } else {
+        max_iter as f64
+    }
 }
 
 #[target_feature(enable = "avx2")]
@@ -106,13 +115,19 @@ pub fn render(buffer: &mut [u32], params: Params, palette: &Vec<Rgb>) {
                         * (params.ymax - params.ymin)
                         + params.ymin,
                 ];
-                let iterations = lsm(c, params.max_iter);
+                let iter_smooth = lsm(c, params.max_iter);
 
-                if iterations == params.max_iter {
+                if iter_smooth >= params.max_iter as f64 {
                     *pixel = BLACK.into();
                 } else {
-                    *pixel =
-                        palette[iterations as usize % palette.len()].into();
+                    let idx = iter_smooth * (palette.len() as f64) / (params.max_iter as f64);
+                    let i0 = idx.floor() as usize % palette.len();
+                    let i1 = (i0 + 1) % palette.len();
+                    let f = (idx - idx.floor()) as f32;
+                    let c0 = palette[i0];
+                    let c1 = palette[i1];
+                    let blended = Rgb::lerp(c0, c1, f);
+                    *pixel = blended.into();
                 }
             })
         });
@@ -138,6 +153,3 @@ pub fn write_file(
     file.write(&buffer)?;
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {}
